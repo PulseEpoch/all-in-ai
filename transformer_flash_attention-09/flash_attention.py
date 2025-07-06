@@ -10,16 +10,15 @@ from transformer_gpt2_07.main import CausalSelfAttention, config
 class FlashOrOriginalAttention(CausalSelfAttention):
     """Causal Self-Attention with corrected Flash Attention implementation"""
 
-    def __init__(self, config, enable_flash=True, state_dict=None):
+    def __init__(self, config, enable_flash=True, state_dict=None, debug=False):
         super().__init__(config)
         self.dropout = config.get('dropout', 0.0)
         self.enable_flash = enable_flash
+        self.debug = debug
         if state_dict is not None:
             self.load_state_dict(state_dict)
 
     def forward(self, x):
-        if not self.enable_flash:
-            return super().forward(x)
         B, T, C = x.size()
         q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
         head_size = C // self.n_head
@@ -31,21 +30,31 @@ class FlashOrOriginalAttention(CausalSelfAttention):
 
         # Only use flash attention for long sequences
         # enable_flash = self.enable_flash and (T > 128)
-        y = self.flash_attention(q, k, v)
+        if self.enable_flash:
+            y = self.flash_attention(q, k, v)
+        else:
+            y = self.original_attention(q, k, v)
+        if self.debug:
+            y_inner = self.original_attention(q, k, v)
+            diff = (y - y_inner).abs().max()
+            print(f"flash: {self.enable_flash}, Inner Max diff: {diff.item()}")
 
         y = y.transpose(1, 2).contiguous().view(B, T, C)
         y = self.c_proj(y)
+        if self.debug:
+            y_orig = super().forward(x)
+            diff = (y_orig - y).abs().max()
+            print(f"flash: {self.enable_flash}, Inner super Max diff: {diff.item()}")
         return y
 
-    # def original_attention(self, q, k, v):
-    #     # Original attention implementation for reference
-    #     att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-    #     bias = torch.tril(torch.ones(
-    #         att.size(-2), att.size(-1), device=att.device))
-    #     att = att.masked_fill(bias == 0, float('-inf'))
-    #     att = torch.softmax(att, dim=-1)
-    #     att = self.attn_dropout(att)
-    #     return att @ v
+    def original_attention(self, q, k, v):
+        # Original attention implementation for reference
+        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+        # Apply causal mask to prevent attending to future tokens
+        att = att.masked_fill(self.bias[None, None, :q.size(-2), :q.size(-2)] == 0, float('-inf'))
+        att = torch.nn.functional.softmax(att, dim=-1)
+        att = self.attn_dropout(att)
+        return att @ v
 
     def flash_attention(self, q, k, v):
         B, H, T, D = q.shape
@@ -141,8 +150,8 @@ if __name__ == "__main__":
         "bias": torch.tril(torch.ones(1024, 1024)),
     }
     orig_attn = FlashOrOriginalAttention(
-        config, state_dict=state_dict, enable_flash=False)
-    attn = FlashOrOriginalAttention(config, state_dict=state_dict)
+        config, state_dict=state_dict, enable_flash=False, debug=True)
+    attn = FlashOrOriginalAttention(config, state_dict=state_dict, debug=True)
     x = torch.randn(2, 512, 768)  # test batch size of 2
 
     # Ensure dropout is disabled for consistent comparison
