@@ -40,3 +40,15 @@ English version available: [README.md](README.md)
 ### 6. mnist_gan-06: 生成对抗网络
 - **核心概念**：GAN架构、对抗训练、图像生成
 - **可视化内容**：[生成图像](mnist_gan-06/generated_images/)
+- **核心组件**：深度卷积生成器和判别器，带BatchNorm
+
+### 7. transformer_gpt2_07: Transformer文本生成
+- **核心概念**：自注意力机制、因果掩码、文本生成
+- **网络架构**：带多头注意力的Mini-GPT实现
+- **应用场景**：字符级文本生成
+
+### 8. transformer_finetune-08: Transformer微调
+- **核心概念**：迁移学习、情感分类、模型微调
+- **可视化内容**：[准确率图表](transformer_finetune-08/accuracy-plot.pdf)
+  - 损失曲线：[损失图表](transformer_finetune-08/loss-plot.pdf)
+- **性能表现**：情感分类任务准确率达89%

@@ -24,18 +24,25 @@ Explore our collection of hands-on AI implementations, each designed to teach co
 ### 3. mnist_classifier-03: MNIST Digit Classification
 - **Key Concepts**: Multi-class classification, fully connected networks, ReLU activation
 - **Architecture**: 784→128→10 layer configuration with ReLU non-linearity
-- **Performance. mnist_cnn-04: Convolutional Neural Network
+- **Performance**: ~97% accuracy on test set
+
+### 4. mnist_cnn-04: Convolutional Neural Network
 - **Key Concepts**: 2D convolutions, max pooling, feature extraction
 - **Architecture**: Two convolutional layers (20→50 filters) followed by fully connected layers
-- **What You'll Learn**: sre snist_distillation-05: Knowledge Distillation
+- **What You'll Learn**: How CNNs capture spatial features in images
+
+### 5. mnist_distillation-05: Knowledge Distillation
 - **Key Concepts**: Teacher-student models, knowledge transfer, KLDivLoss
 - **Visualizations**: ![loss comparison](mnist_distillation-05/loss_comparison.png)
-- **Models**: Teacher (complex CNN) and Student (simplifiedrntGenerative Adversarial Network
+- **Models**: Teacher (complex CNN) and Student (simplified network) implementation
+
+### 6. mnist_gan-06: Generative Adversarial Network
 - **Key Concepts**: GAN architecture, adversarial training, image generation
 - **Visualizations**: [generated images](mnist_gan-06/generated_images/) (sample outputs across 50 epochs)
 - **Components**: Deep convolutional generator and discriminator with BatchNorm
 
-**Key Concepts**: Self-attention, causal masking, text generation
+### 7. transformer_gpt2_07: Transformer Text Generation
+- **Key Concepts**: Self-attention, causal masking, text generation
 - **Architecture**: Mini-GPT implementation with multi-head attention
 - **Applications**: Character-level text generation
 
