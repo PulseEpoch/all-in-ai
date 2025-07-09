@@ -99,14 +99,27 @@ if __name__ == '__main__':
     # Demonstrate compression and decompression
     device = torch.device(args.device)
     test_dataset = load_dataset('mnist', split='test')
-    test_image = transforms.ToTensor()(test_dataset[0]['image'])
+    num_images = 9
+    plt.figure(figsize=(15, 15))
     
-    # Compress
-    z = compress_image(model, test_image, device)
-    print(f'Compressed latent vector shape: {z.shape}')
+    for i in range(num_images):
+        test_image = transforms.ToTensor()(test_dataset[i]['image'])
+        
+        # Compress
+        z = compress_image(model, test_image, device)
+        
+        # Decompress
+        recon_image = decompress_image(model, z, device)
+        
+        # Display decompressed image
+        plt.subplot(3, 3, i+1)
+        plt.imshow(recon_image, cmap='gray')
+        plt.title(f'Decompressed Image {i+1}')
+        plt.axis('off')
     
-    # Decompress
-    recon_image = decompress_image(model, z, device)
+    plt.tight_layout()
+    plt.savefig('results/compressed_9images.png')
+    print('9 compressed images saved to results/compressed_9images.png')
 
     # Save results
     plt.figure(figsize=(10, 5))
