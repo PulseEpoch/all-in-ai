@@ -47,6 +47,7 @@ class ActorCriticAgent:
     def act(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0)
         action_probs = self.actor(state)
+        # Sample action from distribution，exploration
         dist = torch.distributions.Categorical(action_probs)
         action = dist.sample()
         return action.item(), dist.log_prob(action)
