@@ -31,7 +31,7 @@ class ValueNetwork(nn.Module):
         return self.fc(x)
 
 class GRPOAgent:
-    def __init__(self, state_dim, action_dim, lr=3e-4, gamma=0.99, lambda_gae=0.95, kl_target=0.01, beta=1.0):
+    def __init__(self, state_dim, action_dim, lr=1e-4, gamma=0.99, lambda_gae=0.95, kl_target=0.01, beta=1.0):
         self.policy_net = PolicyNetwork(state_dim, action_dim)
         self.value_net = ValueNetwork(state_dim)
         self.optimizer = optim.Adam(list(self.policy_net.parameters()) + list(self.value_net.parameters()), lr=lr)
@@ -78,6 +78,10 @@ class GRPOAgent:
         old_log_probs = torch.FloatTensor(old_log_probs)
         advantages = torch.FloatTensor(advantages)
         returns = torch.FloatTensor(returns)
+        # 归一化优势函数以稳定训练
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        advantages = advantages.detach()
+        returns = returns.detach()
         
         # 计算当前策略的概率和对数概率
         probs = self.policy_net(states)
@@ -88,10 +92,14 @@ class GRPOAgent:
         ratio = torch.exp(new_log_probs - old_log_probs)
         
         # 计算KL散度
-        kl_divergence = (old_log_probs - new_log_probs).mean().item()
+        # 计算正确的KL散度 (新策略 || 旧策略)
+        kl_divergence = (new_log_probs.exp() * (new_log_probs - old_log_probs)).mean().item()
         
         # GRPO策略损失：线性优势估计 + KL惩罚
-        policy_loss = -(ratio * advantages).mean() + self.beta * kl_divergence
+        # 添加熵正则化鼓励探索
+        entropy = dist.entropy().mean()
+        # 增加熵正则化系数增强探索
+        policy_loss = -(ratio * advantages).mean() + self.beta * kl_divergence - 0.05 * entropy
         
         # 自适应调整beta系数
         if kl_divergence < self.kl_target / 1.5:
@@ -113,7 +121,8 @@ class GRPOAgent:
         total_loss.backward()
         self.optimizer.step()
         
-        return policy_loss.item(), value_loss.item(), kl_divergence
+        entropy = dist.entropy().mean().item()
+        return policy_loss.item(), value_loss.item(), kl_divergence, entropy
 
 def train(env_name, agent, episodes=1000, max_steps=200):
     env = gym.make(env_name)
@@ -150,10 +159,14 @@ def train(env_name, agent, episodes=1000, max_steps=200):
         returns = [advantage + value for advantage, value in zip(advantages, values)]
         
         # 更新策略和价值网络
-        policy_loss, value_loss, kl_divergence = agent.update(states, actions, log_probs, advantages, returns, values)
+        policy_loss, value_loss, kl_divergence, entropy = agent.update(states, actions, log_probs, advantages, returns, values)
         
         total_rewards.append(total_reward)
         
+        # 记录训练指标
+        if episode % 10 == 0:
+            print(f"Episode {episode}: Reward={total_reward:.2f}, KL={kl_divergence:.4f}, Entropy={entropy:.4f}, ValueLoss={value_loss:.4f}")
+
         if episode % 100 == 0:
             avg_reward = np.mean(total_rewards[-100:])
             print(f"Episode {episode}, Avg Reward: {avg_reward:.2f}, Policy Loss: {policy_loss:.4f}, Value Loss: {value_loss:.4f}, KL Divergence: {kl_divergence:.6f}")
