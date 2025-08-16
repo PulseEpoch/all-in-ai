@@ -52,6 +52,50 @@ Explore our collection of hands-on AI implementations, each designed to teach co
   - Loss curves: [loss plot](transformer_finetune-08/loss-plot.pdf)
 - **Performance**: 89% accuracy on emotion classification task
 
+### 9. transformer_flash_attention-09: Efficient Transformer Implementation
+- **Key Concepts**: Flash Attention, optimized transformer architecture, memory efficiency
+- **What You'll Learn**: How Flash Attention reduces memory usage and speeds up training
+- **Optimizations**: Implementation of the Flash Attention algorithm for faster computation
+
+### 10. rl-basic-10: Reinforcement Learning Fundamentals
+- **Key Concepts**: Markov decision processes, policy gradients, value iteration
+- **Algorithms Implemented**: DQN, PPO, and Actor-Critic methods
+- **Applications**: Training agents to play simple games and solve control tasks
+
+### 11. vae-image-11: Variational Autoencoder for Images
+- **Key Concepts**: Probabilistic autoencoders, latent space, image generation
+- **Visualizations**: [results](vae-image-11/results/)
+- **What You'll Learn**: How VAEs can compress and generate images with probabilistic modeling
+
+### 12. residual-12: Residual Networks
+- **Key Concepts**: Residual connections, deep network training, gradient flow
+- **Visualizations**: [loss comparison](residual-12/loss_comparison.png), [weight comparison](residual-12/weight_comparison_table.png)
+- **What You'll Learn**: How residual connections enable training of very deep neural networks
+
+### 13. grpo_rl_gpt-13: RL for Language Models
+- **Key Concepts**: Reinforcement Learning from Human Feedback (RLHF), policy optimization
+- **Visualizations**: [training rewards](grpo_rl_gpt-13/training_rewards.png)
+- **Applications**: Fine-tuning language models with reinforcement learning
+
+### 14. gpt2_finetuning_demo-14: GPT-2 Fine-tuning
+- **Key Concepts**: Transfer learning for language models, text generation
+- **Dataset**: Chinese poetry corpus
+- **What You'll Learn**: How to fine-tune pre-trained language models for specific tasks
+
+### 15. transformer_quantization-12: Model Quantization
+- **Key Concepts**: Post-training quantization, model compression, inference optimization
+- **What You'll Learn**: How to reduce model size and speed up inference with minimal accuracy loss
+
+### 16. diffusion-basic-16: Diffusion Models
+- **Key Concepts**: Denoising diffusion, probabilistic modeling, image generation
+- **Training Process**: Gradual noise addition and removal process
+- **Applications**: Generating high-quality images from noise
+
+### 17. random_forest-17: Ensemble Learning
+- **Key Concepts**: Decision trees, ensemble methods, feature importance
+- **Visualizations**: [confusion matrix](random_forest-17/confusion_matrix.png), [feature importance](random_forest-17/feature_importance.png)
+- **Applications**: Classification and regression tasks with interpretability
+
 ## Getting StNavl directory (e.g., `cd linear_nn_fit-01`)
 3. Install dependencies: `pip install -r requirements.txt`
 4. Run the example: `python main.py`

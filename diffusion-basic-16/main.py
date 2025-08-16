@@ -274,8 +274,33 @@ class DDPM:
         x = (x.clamp(-1, 1) + 1) / 2
         return x
 
+# 寻找最近的checkpoint
+
+def find_latest_checkpoint():
+    checkpoint_dir = 'results'
+    if not os.path.exists(checkpoint_dir):
+        return None, 0
+    
+    # 查找所有model_epoch_*.pth文件
+    checkpoints = []
+    for filename in os.listdir(checkpoint_dir):
+        if filename.startswith('model_epoch_') and filename.endswith('.pth'):
+            try:
+                epoch = int(filename.split('_')[-1].split('.')[0])
+                checkpoints.append((epoch, os.path.join(checkpoint_dir, filename)))
+            except ValueError:
+                continue
+    
+    if not checkpoints:
+        return None, 0
+    
+    # 按epoch排序，返回最新的
+    checkpoints.sort(key=lambda x: x[0], reverse=True)
+    return checkpoints[0][1], checkpoints[0][0]
+
 # 训练函数
-def train(ddpm, train_loader, epochs):
+
+def train(ddpm, train_loader, epochs, start_epoch=0):
     for epoch in range(epochs):
         total_loss = 0
         progress_bar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{epochs}')
@@ -292,7 +317,11 @@ def train(ddpm, train_loader, epochs):
 
         # 打印平均损失
         avg_loss = total_loss / len(train_loader)
-        print(f'Epoch {epoch+1}/{epochs}, Average Loss: {avg_loss:.4f}')
+        print(f'Epoch {start_epoch + epoch + 1}/{start_epoch + epochs}, Average Loss: {avg_loss:.4f}')
+        
+        # 保存模型
+        if (epoch + 1) % 10 == 0:
+            torch.save(ddpm.model.state_dict(), f'results/model_epoch_{start_epoch + epoch + 1}.pth')
 
         # 每个epoch结束后生成一些样本
         if (epoch + 1) % 10 == 0:
@@ -312,7 +341,7 @@ def train(ddpm, train_loader, epochs):
             plt.close()
 
             # 保存模型
-            torch.save(ddpm.model.state_dict(), f'results/model_epoch_{epoch+1}.pth')
+            torch.save(ddpm.model.state_dict(), f'results/model_epoch_{start_epoch + epoch + 1}.pth')
 
 # 主函数
 def main():
@@ -327,9 +356,18 @@ def main():
     # 初始化DDPM
     ddpm = DDPM(model, noise_scheduler)
 
+    # 查找最近的checkpoint
+    checkpoint_path, start_epoch = find_latest_checkpoint()
+    if checkpoint_path:
+        print(f'Found checkpoint: {checkpoint_path}, starting from epoch {start_epoch+1}')
+        ddpm.model.load_state_dict(torch.load(checkpoint_path, map_location=config['device']))
+    else:
+        print('No checkpoint found, starting from scratch')
+        start_epoch = 0
+
     # 训练模型
     print(f'Starting training on {config["device"]}...')
-    train(ddpm, train_loader, config['epochs'])
+    train(ddpm, train_loader, config['epochs'], start_epoch)
 
     # 生成最终样本
     print(f'Generating final samples with {config["sampling_method"]}...')
