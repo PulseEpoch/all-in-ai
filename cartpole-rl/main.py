@@ -3,12 +3,17 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import sys
+import time  # 添加时间模块
 from ppo_agent import PPOAgent
 
 def train_ppo_agent(env, agent, episodes=500, max_t=1000, update_timestep=200):
     scores = []
     timestep = 0
+    total_time = 0  # 总训练时间
+    
     for i_episode in range(1, episodes + 1):
+        start_time = time.time()  # 记录episode开始时间
+        
         state = env.reset()
         # 对于gym的新版本，reset()返回元组(state, info)
         if isinstance(state, tuple):
@@ -37,15 +42,21 @@ def train_ppo_agent(env, agent, episodes=500, max_t=1000, update_timestep=200):
             if done:
                 break
         
+        episode_time = time.time() - start_time  # 计算episode耗时
+        total_time += episode_time  # 累计总时间
         scores.append(score)
         
-        # 打印训练进度
+        # 打印训练进度，包括耗时信息
         if i_episode % 10 == 0:
-            print(f'Episode {i_episode}, Average Score: {np.mean(scores[-10:]):.2f}')
+            print(f'Episode {i_episode}, Average Score: {np.mean(scores[-10:]):.2f}, '  
+                  f'Average Time per Episode: {total_time/i_episode:.2f}s')
+        else:
+            print(f'Episode {i_episode}, Score: {score:.2f}, Time: {episode_time:.2f}s')
         
         # 检查是否解决了问题（CartPole-v1要求平均得分>=475）
         if i_episode >= 100 and np.mean(scores[-100:]) >= 475:
             print(f'Environment solved in {i_episode-100} episodes! Average Score: {np.mean(scores[-100:]):.2f}')
+            print(f'Total training time: {total_time:.2f}s')  # 输出总训练时间
             # 保存模型
             torch.save(agent.actor.state_dict(), 'ppo_actor.pth')
             torch.save(agent.critic.state_dict(), 'ppo_critic.pth')
@@ -60,6 +71,7 @@ def train_ppo_agent(env, agent, episodes=500, max_t=1000, update_timestep=200):
     plt.savefig('training_scores.png')
     plt.close()
     
+    print(f'Total training time: {total_time:.2f}s')  # 输出总训练时间
     return scores
 
 def test_agent(env, agent, episodes=5, render=True):
@@ -94,7 +106,21 @@ def test_agent(env, agent, episodes=5, render=True):
     print(f'Average Test Score: {np.mean(scores):.2f}')
     return scores
 
+def get_device():
+    """自动检测可用的计算设备"""
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    elif torch.backends.mps.is_available():
+        # 对于Apple Silicon芯片
+        return torch.device('mps')
+    else:
+        return torch.device('cpu')
+
 def main():
+    # 获取计算设备
+    device = get_device()
+    print(f'Using device: {device}')
+    
     # 检查命令行参数，控制是否渲染GUI
     render = True
     if len(sys.argv) > 1 and sys.argv[1] == '--no-render':
@@ -111,12 +137,20 @@ def main():
         
         print(f'State size: {state_size}, Action size: {action_size}')
         
-        # 创建PPO Agent
-        agent = PPOAgent(state_size, action_size)
+        # 创建PPO Agent，并传递device参数
+        agent = PPOAgent(state_size, action_size, device=device)
         
-        # 训练Agent
-        print("Starting training...")
-        scores = train_ppo_agent(env, agent)
+        # 尝试加载已训练的模型（如果存在）
+        try:
+            agent.actor.load_state_dict(torch.load('ppo_actor.pth', map_location=device))
+            agent.critic.load_state_dict(torch.load('ppo_critic.pth', map_location=device))
+            agent.old_actor.load_state_dict(agent.actor.state_dict())
+            print("Loaded trained models successfully!")
+        except FileNotFoundError:
+            print("No trained models found, starting training from scratch.")
+            # 训练Agent
+            print("Starting training...")
+            scores = train_ppo_agent(env, agent)
         
         # 测试训练好的Agent
         print("\nTesting trained agent...")

@@ -6,7 +6,7 @@ from actor_critic import Actor, Critic
 
 class PPOAgent:
     def __init__(self, state_size, action_size, lr_actor=3e-4, lr_critic=1e-3, gamma=0.99, gae_lambda=0.95,
-                 clip_epsilon=0.2, update_epochs=10, batch_size=64):
+                 clip_epsilon=0.2, update_epochs=10, batch_size=64, device='cpu'):
         self.state_size = state_size
         self.action_size = action_size
         self.gamma = gamma
@@ -14,11 +14,12 @@ class PPOAgent:
         self.clip_epsilon = clip_epsilon
         self.update_epochs = update_epochs
         self.batch_size = batch_size
+        self.device = device
 
         # Initialize Actor and Critic networks
-        self.actor = Actor(state_size, action_size)
-        self.critic = Critic(state_size)
-        self.old_actor = Actor(state_size, action_size)
+        self.actor = Actor(state_size, action_size, device=device)
+        self.critic = Critic(state_size, device=device)
+        self.old_actor = Actor(state_size, action_size, device=device)
         self.old_actor.load_state_dict(self.actor.state_dict())
 
         # Optimizers
@@ -34,7 +35,7 @@ class PPOAgent:
         self.dones = []
 
     def act(self, state):
-        state = torch.from_numpy(state).float().unsqueeze(0)
+        state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
         with torch.no_grad():
             action_probs = self.old_actor(state)
             dist = torch.distributions.Categorical(action_probs)
@@ -52,8 +53,11 @@ class PPOAgent:
 
     def compute_gae(self):
         # Compute GAE advantage estimation
-        values = self.critic(torch.tensor(np.array(self.states), dtype=torch.float32)).detach().numpy().flatten()
-        next_values = self.critic(torch.tensor(np.array(self.next_states), dtype=torch.float32)).detach().numpy().flatten()
+        states_tensor = torch.tensor(np.array(self.states), dtype=torch.float32).to(self.device)
+        next_states_tensor = torch.tensor(np.array(self.next_states), dtype=torch.float32).to(self.device)
+        
+        values = self.critic(states_tensor).detach().cpu().numpy().flatten()
+        next_values = self.critic(next_states_tensor).detach().cpu().numpy().flatten()
         advantages = np.zeros_like(self.rewards)
         last_advantage = 0
 
@@ -69,12 +73,12 @@ class PPOAgent:
         # Compute GAE advantages and returns
         advantages, returns = self.compute_gae()
 
-        # Convert to tensors
-        states = torch.tensor(np.array(self.states), dtype=torch.float32)
-        actions = torch.tensor(self.actions, dtype=torch.long)
-        old_action_log_probs = torch.tensor(self.action_log_probs, dtype=torch.float32)
-        advantages = torch.tensor(advantages, dtype=torch.float32)
-        returns = torch.tensor(returns, dtype=torch.float32)
+        # Convert to tensors and move to device
+        states = torch.tensor(np.array(self.states), dtype=torch.float32).to(self.device)
+        actions = torch.tensor(self.actions, dtype=torch.long).to(self.device)
+        old_action_log_probs = torch.tensor(self.action_log_probs, dtype=torch.float32).to(self.device)
+        advantages = torch.tensor(advantages, dtype=torch.float32).to(self.device)
+        returns = torch.tensor(returns, dtype=torch.float32).to(self.device)
 
         # Normalize advantages
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
@@ -82,7 +86,7 @@ class PPOAgent:
         # Multiple epochs updates
         for _ in range(self.update_epochs):
             # Randomly sample batches
-            indices = torch.randperm(len(states))
+            indices = torch.randperm(len(states)).to(self.device)
             for start in range(0, len(states), self.batch_size):
                 end = start + self.batch_size
                 batch_indices = indices[start:end]
